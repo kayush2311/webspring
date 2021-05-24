@@ -1,0 +1,63 @@
+apiVersion: 1.0.0
+metadata:
+  name: java-mysql-spring-boot
+projects:
+  - name: webspring
+    source:
+      location: 'https://github.com/kayush2311/webspring.git'
+      type: git
+      commitId: d80acbcf6681843d2b07249b6550473dfef3c2ba
+components:
+  - id: redhat/java8/latest
+    type: chePlugin
+    registryUrl: 'https://eclipse-che.github.io/che-plugin-registry/7.30.0/v3/'
+  - mountSources: true
+    endpoints:
+      - name: 8080-tcp
+        port: 8080
+      - attributes:
+          public: 'false'
+        name: debug
+        port: 5005
+    memoryLimit: 1000Mi
+    type: dockerimage
+    volumes:
+      - name: m2
+        containerPath: /home/user/.m2
+    alias: tools
+    image: 'quay.io/eclipse/che-java8-maven:7.30.0'
+    env:
+      - value: ''
+        name: MAVEN_CONFIG
+      - value: '-XX:MaxRAMPercentage=50.0 -XX:+UseParallelGC -XX:MinHeapFreeRatio=10 -XX:MaxHeapFreeRatio=20 -XX:GCTimeRatio=4 -XX:AdaptiveSizePolicyWeight=90 -Dsun.zip.disableMemoryMapping=true -Xms20m -Djava.security.egd=file:/dev/./urandom -Duser.home=/home/user'
+        name: JAVA_OPTS
+      - value: $(JAVA_OPTS)
+        name: MAVEN_OPTS
+commands:
+  - name: maven build
+    actions:
+      - workdir: '${CHE_PROJECTS_ROOT}/webspring'
+        type: exec
+        command: mvn clean install
+        component: tools
+  - name: run webapp
+    actions:
+      - workdir: '${CHE_PROJECTS_ROOT}/webspring'
+        type: exec
+        command: mvn spring-boot:run
+        component: tools
+  - name: Debug remote java application
+    actions:
+      - referenceContent: |
+          {
+          "version": "0.2.0",
+          "configurations": [
+            {
+              "type": "java",
+              "name": "Debug (Attach) - Remote",
+              "request": "attach",
+              "hostName": "localhost",
+              "port": 5005
+            }]
+          }
+        type: vscode-launch
